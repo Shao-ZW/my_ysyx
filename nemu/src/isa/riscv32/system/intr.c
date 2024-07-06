@@ -22,7 +22,7 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   /* TODO: Trigger an interrupt/exception with ``NO''.
    * Then return the address of the interrupt/exception vector.
    */
-  IFDEF(CONFIG_ITRACE, etrace(NO, epc));
+  IFDEF(CONFIG_ETRACE, etrace(NO, epc));
   csr(mepc) = epc;
   csr(mcause) = NO;
   return csr(mtvec);
