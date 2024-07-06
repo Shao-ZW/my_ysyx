@@ -13,14 +13,19 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 
+#include "../local-include/reg.h"
 #include <isa.h>
+
+void etrace(word_t, vaddr_t);
 
 word_t isa_raise_intr(word_t NO, vaddr_t epc) {
   /* TODO: Trigger an interrupt/exception with ``NO''.
    * Then return the address of the interrupt/exception vector.
    */
-
-  return 0;
+  IFDEF(CONFIG_ITRACE, etrace(NO, epc));
+  csr(mepc) = epc;
+  csr(mcause) = NO;
+  return csr(mtvec);
 }
 
 word_t isa_query_intr() {
