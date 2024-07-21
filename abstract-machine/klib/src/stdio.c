@@ -74,7 +74,14 @@ int printf(const char *fmt, ...) {
         num = va_arg(ap, unsigned int);
         cnt += print_num(16, num, 0);
         break;
-
+      
+      case 'p':
+      case 'P':
+        num = (unsigned int)va_arg(ap, void *);
+        putch('0'); putch('x');
+        cnt += print_num(16, num, 0);
+        break;
+      
       case 's':
         s = va_arg(ap, char*);
         if(!s) {
@@ -196,6 +203,13 @@ int vsnprintf(char *out, size_t n, const char *fmt, va_list ap) {
       case 'x':
       case 'X':
         num = va_arg(ap, unsigned int);
+        str = sprint_num(str, end, 16, num, 0);
+        break;
+
+      case 'p':
+      case 'P':
+        *(str++) = '0'; *(str++) = 'x';
+        num = (unsigned int)va_arg(ap, void *);
         str = sprint_num(str, end, 16, num, 0);
         break;
 
