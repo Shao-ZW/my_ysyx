@@ -1,5 +1,6 @@
 #include <proc.h>
 #include <elf.h>
+#include <fs.h>
 
 #ifdef __LP64__
 # define Elf_Ehdr Elf64_Ehdr
@@ -19,27 +20,30 @@ const static char expected_e_ident[EI_NIDENT] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 // 剩余的未使用字节
 };
 
-size_t ramdisk_read(void *buf, size_t offset, size_t len);
 
 static uintptr_t loader(PCB *pcb, const char *filename) {
   Elf_Ehdr elf_header;
-
-  ramdisk_read(&elf_header, 0, sizeof(elf_header));
+  int fd = fs_open(filename, 0, 0);
   
   // check elf magic
+  fs_read(fd, &elf_header, sizeof(elf_header));
   assert(strncmp((char*)elf_header.e_ident, expected_e_ident, EI_NIDENT) == 0);
 
   // read program header
-  for (int i = 0, offset = elf_header.e_phoff; i < elf_header.e_phnum; i++) {
+  fs_lseek(fd, elf_header.e_phoff, SEEK_SET);
+  for (int i = 0; i < elf_header.e_phnum; i++) {
         Elf_Phdr program_header;
-        offset += ramdisk_read(&program_header, offset, sizeof(Elf_Phdr));
-
+        fs_read(fd, &program_header, sizeof(Elf_Phdr));
         if(program_header.p_type == PT_LOAD) {
-          ramdisk_read((void*)program_header.p_vaddr, program_header.p_offset, program_header.p_filesz);
+          size_t original_offset = fs_lseek(fd, 0, SEEK_CUR);
+          fs_lseek(fd, program_header.p_offset, SEEK_SET);
+          fs_read(fd, (void*)program_header.p_vaddr, program_header.p_filesz);
+          fs_lseek(fd, original_offset, SEEK_SET);
           memset((void*)program_header.p_vaddr + program_header.p_filesz, 0, program_header.p_memsz - program_header.p_filesz);
         }
     }
 
+  fs_close(fd);
   return elf_header.e_entry;
 }
 
