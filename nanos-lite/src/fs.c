@@ -46,6 +46,7 @@ int fs_open(const char *pathname, int flags, int mode) {
 }
 
 int fs_close(int fd) {
+  file_table[fd].open_offset = 0;
   return 0;
 }
 
