@@ -23,9 +23,9 @@ word_t isa_raise_intr(word_t NO, vaddr_t epc) {
    * Then return the address of the interrupt/exception vector.
    */
   IFDEF(CONFIG_ETRACE, etrace(NO, epc));
-  csr(mepc) = epc;
-  csr(mcause) = NO;
-  return csr(mtvec);
+  csr(MEPC) = epc;
+  csr(MCAUSE) = NO;
+  return csr(MTVEC);
 }
 
 word_t isa_query_intr() {
