@@ -25,6 +25,9 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
   Elf_Ehdr elf_header;
   int fd = fs_open(filename, 0, 0);
   
+  if(fd == -1)
+    return -1;
+
   // check elf magic
   fs_read(fd, &elf_header, sizeof(elf_header));
   assert(strncmp((char*)elf_header.e_ident, expected_e_ident, EI_NIDENT) == 0);
@@ -47,9 +50,12 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
   return elf_header.e_entry;
 }
 
-void naive_uload(PCB *pcb, const char *filename) {
+int naive_uload(PCB *pcb, const char *filename) {
   uintptr_t entry = loader(pcb, filename);
-  Log("Jump to entry = %p", entry);
-  ((void(*)())entry) ();
+  if(entry != -1) {
+    Log("Jump to entry = %p", entry);
+    ((void(*)())entry) ();
+  }
+  return -1;
 }
 

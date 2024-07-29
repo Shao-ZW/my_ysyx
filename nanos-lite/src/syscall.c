@@ -2,8 +2,11 @@
 #include <sys/time.h>
 #include "syscall.h"
 #include <fs.h>
+#include <proc.h>
 
 // #define STRACE
+
+int naive_uload(PCB *pcb, const char *filename);
 
 extern Finfo file_table[];
 
@@ -36,11 +39,22 @@ void strace(uintptr_t a[], int ret) {
     case SYS_gettimeofday:
       printf("gettimeofday(%p, %p) = %d\n", a[1], a[2], ret); 
       break;
+    case SYS_execve:
+      printf("execve(\"%s\", %p, %p) = %d\n", file_table[a[1]].name, a[2], a[3], ret); 
+      break;
   }
 }
 
+static int sys_execve(char *fname, char * const argv[], char * const envp[]) {
+  naive_uload(NULL, fname);
+
+  return -1;
+}
+
 static int sys_exit(int status) {
-  halt(status); 
+  sys_execve("/bin/nterm", NULL, NULL);
+
+  return -1;
 }
 
 static int sys_yield() {
@@ -98,6 +112,7 @@ void do_syscall(Context *c) {
     case SYS_write: c->GPRx = sys_write(a[1], (void*)a[2], a[3]); break;
     case SYS_lseek: c->GPRx = sys_lseek(a[1], a[2], a[3]); break;
     case SYS_gettimeofday: c->GPRx = sys_gettimeofday((void*)a[1], (void*)a[2]); break;
+    case SYS_execve: c->GPRx = sys_execve((char*)a[1], (char**)a[2], (char**)a[3]); break;
     default: panic("Unhandled syscall ID = %d", a[0]);
   }
 
