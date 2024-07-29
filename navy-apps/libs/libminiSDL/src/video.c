@@ -7,12 +7,66 @@
 void SDL_BlitSurface(SDL_Surface *src, SDL_Rect *srcrect, SDL_Surface *dst, SDL_Rect *dstrect) {
   assert(dst && src);
   assert(dst->format->BitsPerPixel == src->format->BitsPerPixel);
+  
+  SDL_Rect src_rect = {0, 0, src->w, src->h};
+  if(srcrect != NULL) {
+    src_rect = *srcrect;
+  }
+
+  SDL_Rect dst_rect = {0, 0, src_rect.w, src_rect.h};
+  if(dstrect != NULL) {
+    dst_rect = *dstrect;
+  }
+
+  int bpp = src->format->BytesPerPixel;
+  for(int y = 0; y < src_rect.h; ++y) {
+    uint8_t *src_pixel = src->pixels + ((src_rect.y + y) * src->pitch) + (src_rect.x * bpp);
+    uint8_t *dst_pixel = dst->pixels + ((dst_rect.y + y) * dst->pitch) + (dst_rect.x * bpp);
+    memcpy(dst_pixel, src_pixel, src_rect.w * bpp);
+  }
 }
 
 void SDL_FillRect(SDL_Surface *dst, SDL_Rect *dstrect, uint32_t color) {
+  SDL_Rect dst_rect = {0, 0, dst->w, dst->h};
+  if(dstrect != NULL) {
+    dst_rect = *dstrect;
+  }
+
+  int bpp = dst->format->BytesPerPixel;
+  for(int y = 0; y < dst_rect.h; ++y) {
+    uint8_t *dst_pixel = dst->pixels + ((dst_rect.y + y) * dst->pitch) + (dst_rect.x * bpp);
+    memset(dst_pixel, color, dst_rect.w * bpp);
+  }
+}
+
+static inline uint32_t translate_color(SDL_Color *color){
+  return (color->a << 24) | (color->r << 16) | (color->g << 8) | color->b;
 }
 
 void SDL_UpdateRect(SDL_Surface *s, int x, int y, int w, int h) {
+  if(x == 0 && y == 0 && w == 0 && h == 0) {
+    w = s->w;
+    h = s->h;
+  }
+
+  uint8_t bpp = s->format->BytesPerPixel;
+  uint8_t *src = s->pixels;
+  uint32_t *pixels = malloc(w * h * sizeof(uint32_t));
+
+  if(bpp == 4) {
+    for (int i = 0; i < h; ++i) {
+      memcpy(pixels + w * i, src + ((y + i) * s->w + x) * sizeof(uint32_t), w * sizeof(uint32_t));
+    }
+  }
+  else if(bpp == 1) {
+    for(int i = 0; i < h; ++i)
+      for(int j = 0; j < w; ++j) {
+        pixels[i * w + j] = translate_color(&s->format->palette->colors[src[(y + i) * s->w + x + j]]);
+      }
+  }
+
+  NDL_DrawRect(pixels, x, y, w, h);
+  free(pixels);
 }
 
 // APIs below are already implemented.

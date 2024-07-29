@@ -23,11 +23,16 @@ static void sh_prompt() {
 }
 
 static void sh_handle_cmd(const char *cmd) {
+  int ret = execvp(cmd, NULL);
+  if(ret == -1) {
+    sh_printf("Command '%s' not found\n", cmd);
+  }
 }
 
 void builtin_sh_run() {
   sh_banner();
   sh_prompt();
+  setenv("PATH", "/bin", 0);
 
   while (1) {
     SDL_Event ev;
