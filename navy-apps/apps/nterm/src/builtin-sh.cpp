@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <SDL.h>
 
+#define ARG_MAX 128
+
 char handle_key(SDL_Event *ev);
 
 static void sh_printf(const char *format, ...) {
@@ -23,7 +25,18 @@ static void sh_prompt() {
 }
 
 static void sh_handle_cmd(const char *cmd) {
-  int ret = execvp(cmd, NULL);
+  char cmd_t[256];
+  char *argv[ARG_MAX] = {NULL};
+  int argc = 0;
+
+  strcpy(cmd_t, cmd);
+  char *arg = strtok(cmd_t, " ");
+  while (arg != NULL) {
+    argv[argc++] = arg;
+    arg = strtok(NULL, " ");
+  }
+
+  int ret = execvp(argv[0], argv);
   if(ret == -1) {
     sh_printf("Command '%s' not found\n", cmd);
   }
@@ -32,7 +45,7 @@ static void sh_handle_cmd(const char *cmd) {
 void builtin_sh_run() {
   sh_banner();
   sh_prompt();
-  setenv("PATH", "/bin", 0);
+  setenv("PATH", "/bin:/usr/bin", 0);
 
   while (1) {
     SDL_Event ev;

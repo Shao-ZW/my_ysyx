@@ -36,7 +36,15 @@ bool cte_init(Context*(*handler)(Event, Context*)) {
 }
 
 Context *kcontext(Area kstack, void (*entry)(void *), void *arg) {
-  return NULL;
+  Context *cp = (Context*)kstack.end - 1;
+  cp->gpr[10] = (uintptr_t)arg;
+  cp->mepc = (uintptr_t)entry;
+#if defined(CONFIG_RV64)
+  cp->mstatus = 0xa00001800;
+#else
+  cp->mstatus = 0x1800;
+#endif
+  return cp;
 }
 
 void yield() {

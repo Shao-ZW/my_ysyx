@@ -2,6 +2,9 @@
 #include <elf.h>
 #include <fs.h>
 
+#define ENV_MAX 128
+#define ARG_MAX 128
+
 #ifdef __LP64__
 # define Elf_Ehdr Elf64_Ehdr
 # define Elf_Phdr Elf64_Phdr
@@ -48,6 +51,88 @@ static uintptr_t loader(PCB *pcb, const char *filename) {
 
   fs_close(fd);
   return elf_header.e_entry;
+}
+
+Context* context_kload(PCB *pcb, void (*entry)(void *), void *arg) {
+  return kcontext((Area){&pcb->stack[0], &pcb->stack[STACK_SIZE]}, entry, arg);
+}
+
+/*
++---------------+ <---- ustack.end
+|  Unspecified  |
++---------------+
+|               | <----------+
+|    string     | <--------+ |
+|     area      | <------+ | |
+|               | <----+ | | |
+|               | <--+ | | | |
++---------------+    | | | | |
+|  Unspecified  |    | | | | |
++---------------+    | | | | |
+|     NULL      |    | | | | |
++---------------+    | | | | |
+|    ......     |    | | | | |
++---------------+    | | | | |
+|    envp[1]    | ---+ | | | |
++---------------+      | | | |
+|    envp[0]    | -----+ | | |
++---------------+        | | |
+|     NULL      |        | | |
++---------------+        | | |
+| argv[argc-1]  | -------+ | |
++---------------+          | |
+|    ......     |          | |
++---------------+          | |
+|    argv[1]    | ---------+ |
++---------------+            |
+|    argv[0]    | -----------+
++---------------+
+|      argc     |
++---------------+ <---- cp->GPRx
+*/
+
+int context_uload(PCB *pcb, const char *filename, char *const argv[], char *const envp[]) {
+  if(fs_open(filename, 0, 0) == -1)
+    return -1;
+
+  uintptr_t sp = (uintptr_t)new_page(STACK_SIZE / PGSIZE) + STACK_SIZE;
+  char *argv_t[ARG_MAX] = {NULL};
+  char *envp_t[ENV_MAX] = {NULL};
+  int argc = 0;
+  int envc = 0;
+
+  while (argv && argv[argc] != NULL) argc++;
+  while (envp && envp[envc] != NULL) envc++;
+
+  for (int i = argc - 1; i >= 0; i--) {
+    sp -= (strlen(argv[i]) + 1);
+    strcpy((char*)sp, argv[i]);
+    argv_t[i] = (char*)sp;
+  }
+
+  for (int i = envc - 1; i >= 0; i--) {
+    sp -= (strlen(envp[i]) + 1);
+    strcpy((char*)sp, envp[i]);
+    envp_t[i] = (char*)sp;
+  }
+
+  sp &= ~0xF;
+
+  sp -= (envc + 1) * sizeof(char*);
+  memcpy((void*)sp, envp_t, (envc + 1) * sizeof(char*));
+
+  sp -= (argc + 1) * sizeof(char*);
+  memcpy((void*)sp, argv_t, (argc + 1) * sizeof(char*));
+
+  sp -= sizeof(int);
+  *(int*)sp = argc;
+
+  // avoid envp be covered
+  void *entry = (void*)loader(pcb, filename);
+  pcb->cp = ucontext(NULL, (Area){&pcb->stack[0], &pcb->stack[STACK_SIZE]}, entry);
+  pcb->cp->GPRx = sp;
+
+  return 0;
 }
 
 int naive_uload(PCB *pcb, const char *filename) {

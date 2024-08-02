@@ -6,7 +6,8 @@
 
 // #define STRACE
 
-int naive_uload(PCB *pcb, const char *filename);
+int context_uload(PCB *pcb, const char *filename, char *const argv[], char *const envp[]);
+void switch_boot_pcb();
 
 extern Finfo file_table[];
 
@@ -46,9 +47,11 @@ void strace(uintptr_t a[], int ret) {
 }
 
 static int sys_execve(char *fname, char * const argv[], char * const envp[]) {
-  naive_uload(NULL, fname);
-
-  return -1;
+  if(context_uload(current, fname, argv, envp) == -1)
+    return -2;
+  switch_boot_pcb();
+  yield();
+  return 0;
 }
 
 static int sys_exit(int status) {
