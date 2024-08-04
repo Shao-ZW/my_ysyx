@@ -48,6 +48,7 @@ extern "C" void pmem_write(paddr_t waddr, uint32_t wdata, char wmask) {
   if(waddr == CONFIG_SERIAL_MMIO) {
     difftest_skip_ref();
     putchar(wdata & 0xFF);
+    fflush(stdout);
     return;
   }
   #endif

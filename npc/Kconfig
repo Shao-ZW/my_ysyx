@@ -81,12 +81,12 @@ config ITRACE_COND
 config MTRACE
   depends on TRACE && TARGET_NATIVE_ELF
   bool "Enable memory tracer"
-  default y
+  default n
 
 config FTRACE
   depends on TRACE && TARGET_NATIVE_ELF
   bool "Enable function tracer"
-  default y
+  default n
 
 config DIFFTEST
   depends on TARGET_NATIVE_ELF
@@ -98,12 +98,12 @@ config DIFFTEST
 
 choice
   prompt "Reference design"
-  default DIFFTEST_REF_NEMU
+  default DIFFTEST_REF_SPIKE
   depends on DIFFTEST
-config DIFFTEST_REF_NEMU
-  bool "Nemu"
 config DIFFTEST_REF_SPIKE
   bool "Spike"
+config DIFFTEST_REF_NEMU
+  bool "Nemu"
 endchoice
 
 config DIFFTEST_REF_PATH

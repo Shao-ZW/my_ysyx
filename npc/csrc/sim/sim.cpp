@@ -30,8 +30,8 @@ void cpu_update() {
 
   cpu.csr[MSTATUS] = top->rootp->top__DOT__u_CPU__DOT__u_CSR__DOT__mstatus;
   cpu.csr[MTVEC] = top->rootp->top__DOT__u_CPU__DOT__u_CSR__DOT__mtvec;
-  cpu.csr[MEPC] = top->rootp->top__DOT__u_CPU__DOT__u_CSR__DOT__mcause;
-  cpu.csr[MCAUSE] = top->rootp->top__DOT__u_CPU__DOT__u_CSR__DOT__mepc;
+  cpu.csr[MEPC] = top->rootp->top__DOT__u_CPU__DOT__u_CSR__DOT__mepc;
+  cpu.csr[MCAUSE] = top->rootp->top__DOT__u_CPU__DOT__u_CSR__DOT__mcause;
 }
 
 static void restart() {
