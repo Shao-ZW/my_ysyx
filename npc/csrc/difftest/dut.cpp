@@ -21,6 +21,7 @@ difftest_init_t ref_difftest_init = NULL;
 
 static bool is_skip_ref = false;
 static int skip_dut_nr_inst = 0;
+static bool just_skip_ref = false;
 CPU_state ref;
 
 // this is used to let ref skip instructions which
@@ -120,10 +121,15 @@ void difftest_step(vaddr_t pc, vaddr_t npc) {
   }
 
   if (is_skip_ref) {
+    is_skip_ref = false;
+    just_skip_ref = true;
+    return;
+  }
+
+  if(just_skip_ref) {
     // to skip the checking of an instruction, just copy the reg state to reference design
     ref_difftest_regcpy(&cpu, DIFFTEST_TO_REF);
-    is_skip_ref = false;
-    return;
+    just_skip_ref = false;
   }
 
   // changed for synchronous writes

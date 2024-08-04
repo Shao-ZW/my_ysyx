@@ -7,9 +7,15 @@
 
 #include "common.h"
 
+#define MSTATUS 0x300
+#define MTVEC   0x305
+#define MEPC    0x341
+#define MCAUSE  0x342
+
 typedef struct {
   word_t gpr[RISCV_GPR_NUM];
   vaddr_t pc;
+  word_t csr[4096];
   vaddr_t npc;
   word_t inst_val;
   IFDEF(CONFIG_ITRACE, char logbuf[128]);

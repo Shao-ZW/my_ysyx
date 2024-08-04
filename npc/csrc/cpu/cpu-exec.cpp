@@ -103,5 +103,6 @@ void set_sim_state(int state, vaddr_t pc, int halt_ret) {
 }
 
 extern "C" void npc_trap() {
+  cpu_update();
   set_sim_state(SIM_END, cpu.pc, cpu.gpr[10]);
 }

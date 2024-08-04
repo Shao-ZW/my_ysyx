@@ -27,6 +27,11 @@ void cpu_update() {
     cpu.gpr[i] = top->rootp->top__DOT__u_CPU__DOT__u_regfile__DOT__reg_array[i];
   }
   cpu.inst_val = top->rootp->top__DOT__inst;
+
+  cpu.csr[MSTATUS] = top->rootp->top__DOT__u_CPU__DOT__u_CSR__DOT__mstatus;
+  cpu.csr[MTVEC] = top->rootp->top__DOT__u_CPU__DOT__u_CSR__DOT__mtvec;
+  cpu.csr[MEPC] = top->rootp->top__DOT__u_CPU__DOT__u_CSR__DOT__mcause;
+  cpu.csr[MCAUSE] = top->rootp->top__DOT__u_CPU__DOT__u_CSR__DOT__mepc;
 }
 
 static void restart() {

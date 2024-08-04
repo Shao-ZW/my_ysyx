@@ -10,7 +10,9 @@ override ARGS += $(ARGS_DIFF)
 IMG ?=
 NPC_SIM := $(BIN) $(ARGS) $(IMG)
 
-sim: $(BIN)
+sim-env: $(BIN) $(DIFF_REF_SO)
+
+sim: sim-env
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
 	$(NPC_SIM)
 

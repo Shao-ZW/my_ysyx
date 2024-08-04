@@ -22,5 +22,10 @@ void reg_display() {
     word_t val = reg_str2val(regs[i]);
     printf("%-5s " FMT_WORD "   " FMT_UNSIGN "\n", regs[i], val, val);
   }
+
+  printf("%-9s " FMT_WORD "   " FMT_UNSIGN "\n", "mstatus", cpu.csr[MSTATUS], cpu.csr[MSTATUS]);
+  printf("%-9s " FMT_WORD "   " FMT_UNSIGN "\n", "mtvec", cpu.csr[MTVEC], cpu.csr[MTVEC]);
+  printf("%-9s " FMT_WORD "   " FMT_UNSIGN "\n", "mepc", cpu.csr[MEPC], cpu.csr[MEPC]);
+  printf("%-9s " FMT_WORD "   " FMT_UNSIGN "\n", "mcause", cpu.csr[MCAUSE], cpu.csr[MCAUSE]);
 }
 

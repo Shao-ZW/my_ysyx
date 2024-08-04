@@ -1,5 +1,6 @@
 #include "memory/pmem.h"
 #include "trace/mtrace.h"
+#include "difftest.h"
 #include "common.h"
 
 static uint8_t pmem[CONFIG_MSIZE] PG_ALIGN = {};
@@ -19,9 +20,11 @@ extern "C" uint32_t pmem_read(paddr_t raddr) {
   #ifdef CONFIG_HAS_TIMER
   static uint64_t nowtime;
   if(raddr == CONFIG_RTC_MMIO) {
+    difftest_skip_ref();
     return (uint32_t)nowtime;
   }
   if(raddr == CONFIG_RTC_MMIO + 4) {
+    difftest_skip_ref();
     nowtime = get_time();
     return nowtime >> 32;
   }
@@ -43,6 +46,7 @@ extern "C" void pmem_write(paddr_t waddr, uint32_t wdata, char wmask) {
   // 如`wmask = 0x3`代表只写入最低2个字节, 内存中的其它字节保持不变
   #ifdef CONFIG_HAS_SERIAL
   if(waddr == CONFIG_SERIAL_MMIO) {
+    difftest_skip_ref();
     putchar(wdata & 0xFF);
     return;
   }
