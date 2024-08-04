@@ -20,14 +20,25 @@ module CPU(
     wire [31:0] rf_rdata2;
     wire [31:0] rf_wdata;
 
+    wire [31:0] csr_rdata;
+    wire [31:0] csr_wdata;
+    wire [31:0] mcause_wdata;
+    wire [31:0] mtvec_rdata;
+    wire [31:0] mepc_rdata;
+
     wire [31:0] imm;
     wire [9:0]  alu_op;
     wire [2:0]  sel_alu_src1; // 001 rf_rdata1 010 pc  100 0
     wire [2:0]  sel_alu_src2; // 001 rf_rdata2 010 imm 100 4
     wire [7:0]  jump_type;
     wire [7:0]  mem_type;
-    wire        sel_rf_wdata;       // 0 alu_res 1 dram
+    wire [2:0]  sel_rf_wdata; // 001 alu_res 010 dram 100 csr_data
     wire        rf_wen;
+    wire [5:0]  csr_op;
+    wire [31:0] zimm;
+    wire        csr_wen;
+    wire        ecall_en;
+    wire        mret_en;
 
     wire [31:0] alu_src1;
     wire [31:0] alu_src2;
@@ -38,15 +49,22 @@ module CPU(
 
     wire [31:0] load_data;
 
+    wire exception_en;
+
+
     // IF
     assign iram_en   = rst_done;
     assign iram_addr = pc;
 
-    mux2_1 #(.WIDTH(32)) mux_next_pc(
-        .in0(pc + 32'd4),
-        .in1(jump_target),
-        .sel(jump_taken),
-        .out(next_pc)
+    NPC u_NPC(
+        .pc(pc),
+        .mtvec_rdata(mtvec_rdata),
+        .mepc_rdata(mepc_rdata),
+        .jump_target(jump_target),
+        .exception_en(exception_en),
+        .mret_en(mret_en),
+        .jump_taken(jump_taken),
+        .next_pc(next_pc)
     );
 
     PC u_PC(
@@ -63,6 +81,7 @@ module CPU(
     IDU u_IDU(
         .inst(inst),
         .imm(imm),
+        .zimm(zimm),
         .alu_op(alu_op),
         .jump_type(jump_type),
         .mem_type(mem_type),
@@ -71,7 +90,11 @@ module CPU(
         .rf_wen(rf_wen),
         .sel_rf_wdata(sel_rf_wdata),
         .dram_en(dram_en),
-        .dram_wen(dram_wen)
+        .dram_wen(dram_wen),
+        .csr_op(csr_op),
+        .csr_wen(csr_wen),
+        .ecall_en(ecall_en),
+        .mret_en(mret_en)
     );
 
     regfile u_regfile(
@@ -85,6 +108,20 @@ module CPU(
         .rdata2(rf_rdata2)
     );
 
+    CSR u_CSR(
+        .clk(clk),
+        .rst(rst),
+        .wen(csr_wen),
+        .raddr(imm[11:0]),
+        .waddr(imm[11:0]),
+        .wdata(csr_wdata),
+        .rdata(csr_rdata),
+        .mepc_wdata(pc),
+        .exception_en(exception_en),
+        .mepc_rdata(mepc_rdata),
+        .mcause_wdata(mcause_wdata),
+        .mtvec_rdata(mtvec_rdata)
+    );
 
     // EXE
     mux3_1 #(.WIDTH(32)) mux_alu_src1(
@@ -120,6 +157,13 @@ module CPU(
         .taken(jump_taken)
     );
 
+    PriU u_PriU(
+        .csr_op(csr_op),
+        .csr_rdata(csr_rdata),
+        .rf_rdata(rf_rdata1),
+        .zimm(zimm),
+        .csr_wdata(csr_wdata)
+    );
 
     // MEM
     assign dram_addr = alu_res;
@@ -140,11 +184,18 @@ module CPU(
     );
 
     // WB
-    mux2_1 #(.WIDTH(32)) mux_rf_wdata(
+    mux3_1 #(.WIDTH(32)) mux_rf_wdata(
         .in0(alu_res),
         .in1(load_data),
+        .in2(csr_rdata),
         .sel(sel_rf_wdata),
         .out(rf_wdata)
     );
-    
+
+    Exp_Commit u_Exp_Commit(
+        .ecall_en(ecall_en),
+        .mcause_wdata(mcause_wdata),
+        .exception_en(exception_en)
+    );
+
 endmodule

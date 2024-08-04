@@ -7,9 +7,14 @@ module IDU (
     output [2:0]  sel_alu_src1, // 001 rf_rdata1 010 pc  100 0
     output [2:0]  sel_alu_src2, // 001 rf_rdata2 010 imm 100 4
     output        rf_wen,
-    output        sel_rf_wdata, // 0 alu_res 1 dram
+    output [2:0]  sel_rf_wdata, // 001 alu_res 010 dram 100 csr_data
     output        dram_en,
-    output        dram_wen
+    output        dram_wen,
+    output        csr_wen,
+    output [5:0]  csr_op,
+    output [31:0] zimm,
+    output        ecall_en,
+    output        mret_en
 );
 
     wire [6:0] opcode;
@@ -18,7 +23,7 @@ module IDU (
     wire [31:0] immI, immU, immS, immB, immJ;
 
     wire R_type;
-    wire I_type, I_type_load, I_type_jump, I_type_al;
+    wire I_type, I_type_load, I_type_jump, I_type_al, I_type_priv;
     wire U_type, U_type_lui, U_type_auipc;
     wire S_type;
     wire B_type;
@@ -60,6 +65,15 @@ module IDU (
     wire inst_or;
     wire inst_and;
     
+    wire inst_csrrw;
+    wire inst_csrrs;
+    wire inst_csrrc;
+    wire inst_csrrwi;
+    wire inst_csrrsi;
+    wire inst_csrrci;
+    wire inst_ecall;
+    wire inst_mret;
+
     wire inst_ebreak;
 
 
@@ -71,7 +85,8 @@ module IDU (
     assign I_type_load  = opcode == 7'b0000011;
     assign I_type_jump  = opcode == 7'b1100111;
     assign I_type_al    = opcode == 7'b0010011;
-    assign I_type       = I_type_load | I_type_jump | I_type_al;
+    assign I_type_priv  = opcode == 7'b1110011;
+    assign I_type       = I_type_load | I_type_jump | I_type_al | I_type_priv;
     assign U_type_lui   = opcode == 7'b0110111;
     assign U_type_auipc = opcode == 7'b0010111;
     assign U_type       = U_type_lui | U_type_auipc;
@@ -115,6 +130,15 @@ module IDU (
     assign inst_or    = R_type & (funct3 == 3'b110);
     assign inst_and   = R_type & (funct3 == 3'b111);
 
+    assign inst_csrrw  = I_type_priv & (funct3 == 3'b001);
+    assign inst_csrrs  = I_type_priv & (funct3 == 3'b010);
+    assign inst_csrrc  = I_type_priv & (funct3 == 3'b011);
+    assign inst_csrrwi = I_type_priv & (funct3 == 3'b101);
+    assign inst_csrrsi = I_type_priv & (funct3 == 3'b110);
+    assign inst_csrrci = I_type_priv & (funct3 == 3'b111);
+    assign inst_ecall  = inst == 32'b00000000000000000000000001110011;
+    assign inst_mret   = inst == 32'b00110000001000000000000001110011;
+
     assign inst_ebreak = inst == 32'b00000000000100000000000001110011;
 
     import "DPI-C" function void npc_trap();
@@ -128,6 +152,8 @@ module IDU (
     assign immS = {{20{inst[31]}}, inst[31:25], inst[11:7]};
     assign immB = {{19{inst[31]}}, inst[31], inst[7], inst[30:25], inst[11:8], 1'b0};
     assign immJ = {{11{inst[31]}}, inst[31], inst[19:12], inst[20], inst[30:21], 1'b0};
+
+    assign zimm = {27'b0, inst[19:15]};
 
     mux5_1 u_mux5_1(
         .in0(immI),
@@ -150,6 +176,8 @@ module IDU (
     assign alu_op[8] = inst_srli | inst_srl;
     assign alu_op[9] = inst_srai | inst_sra;
 
+    assign csr_op = {inst_csrrci, inst_csrrsi, inst_csrrwi, inst_csrrc, inst_csrrs, inst_csrrw};
+
     assign jump_type = {inst_bgeu, inst_bltu, inst_bge, inst_blt, inst_bne, inst_beq, inst_jalr, inst_jal};
     
     assign mem_type = {inst_lhu, inst_lbu, inst_lw, inst_lh, inst_lb, inst_sw, inst_sh, inst_sb};
@@ -162,12 +190,20 @@ module IDU (
     assign sel_alu_src2[1] = U_type | I_type_load | S_type | I_type_al;
     assign sel_alu_src2[2] = J_type | I_type_jump;
 
-    assign sel_rf_wdata = I_type_load;
+    assign sel_rf_wdata[0] = U_type | J_type | R_type | I_type_al | I_type_jump;
+    assign sel_rf_wdata[1] = I_type_load;
+    assign sel_rf_wdata[2] = I_type_priv;
 
     assign rf_wen = U_type | J_type | I_type | R_type;
 
     assign dram_en = I_type_load | S_type;
 
     assign dram_wen = S_type;
+    
+    assign csr_wen = I_type_priv;
+
+    assign ecall_en = inst_ecall;
+
+    assign mret_en = inst_mret;
 
 endmodule
