@@ -4,8 +4,8 @@ module BRU (
     input  [31:0] src2,
     input  [31:0] pc,
     input  [31:0] imm,
-    output [31:0] target,
-    output        taken
+    output [31:0] jump_target,
+    output        jump_taken
 );
     wire inst_jal;
     wire inst_jalr;
@@ -37,6 +37,7 @@ module BRU (
     wire bltu;
     wire bgeu;
 
+    wire taken;
 
     assign inst_jal  = jump_type[0];
     assign inst_jalr = jump_type[1];
@@ -77,6 +78,8 @@ module BRU (
                     | (inst_bltu & bltu)
                     | (inst_bgeu & bgeu);
 
-    assign target = inst_jalr ? jalr_target : other_target;
+    assign jump_target = inst_jalr ? jalr_target : taken ? other_target : pc + 4;
+
+    assign jump_taken = |jump_type;
 
 endmodule

@@ -1,6 +1,6 @@
 TOPNAME = top
 VERILATOR = verilator
-VERILATOR_CFLAGS += --build -cc --exe -x-assign fast --trace #-Wall
+VERILATOR_CFLAGS += --build -cc --exe -x-assign fast --trace-fst #-Wall
 
 WORK_DIR  = $(shell pwd)
 BUILD_DIR = $(WORK_DIR)/build
@@ -8,7 +8,7 @@ OBJ_DIR = $(BUILD_DIR)/obj_dir
 INC_PATH := $(WORK_DIR)/include $(INC_PATH)
 
 BIN = $(BUILD_DIR)/$(TOPNAME)
-VCD_FILE = $(BUILD_DIR)/wave.vcd
+FST_FILE = $(BUILD_DIR)/wave.fst
 
 $(shell mkdir -p $(BUILD_DIR))
 

@@ -28,16 +28,16 @@ static void trace_and_difftest() {
   log_write("%s\n", cpu.logbuf);
 #endif
   if (g_print_step) { IFDEF(CONFIG_ITRACE, puts(cpu.logbuf)); }
-  IFDEF(CONFIG_DIFFTEST, difftest_step(cpu.pc, cpu.npc));
+  IFDEF(CONFIG_DIFFTEST, difftest_step());
 
   IFDEF(CONFIG_WATCHPOINT, check_wp());
 }
 
 static void exec_once() {
-  npc_eval(0);
-  npc_eval(1);
+  npc_eval();
   cpu_update();
   IFDEF(CONFIG_ITRACE, itrace());
+  cpu.pc = cpu.npc;
 }
 
 static void execute(uint64_t n) {
@@ -100,9 +100,4 @@ void set_sim_state(int state, vaddr_t pc, int halt_ret) {
   sim_state.state = state;
   sim_state.halt_pc = pc;
   sim_state.halt_ret = halt_ret;
-}
-
-extern "C" void npc_trap() {
-  cpu_update();
-  set_sim_state(SIM_END, cpu.pc, cpu.gpr[10]);
 }

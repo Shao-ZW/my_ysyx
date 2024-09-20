@@ -16,10 +16,10 @@ sim: sim-env
 	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
 	$(NPC_SIM)
 
-vcd: $(VCD_FILE)
-	gtkwave $(VCD_FILE)
+fst: $(FST_FILE)
+	gtkwave $(FST_FILE)
 
 clean:
 	rm -rf $(BUILD_DIR)
 	
-.PHONY: sim vcd clean
+.PHONY: sim fst clean

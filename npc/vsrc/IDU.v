@@ -2,8 +2,8 @@ module IDU (
     input  [31:0] inst,
     output [31:0] imm,
     output [9:0]  alu_op,
-    output [7:0]  jump_type,
-    output [7:0]  mem_type,
+    output [7:0]  jump_type,    // {inst_bgeu, inst_bltu, inst_bge, inst_blt, inst_bne, inst_beq, inst_jalr, inst_jal}
+    output [7:0]  mem_type,     // {inst_lhu, inst_lbu, inst_lw, inst_lh, inst_lb, inst_sw, inst_sh, inst_sb}
     output [2:0]  sel_alu_src1, // 001 rf_rdata1 010 pc  100 0
     output [2:0]  sel_alu_src2, // 001 rf_rdata2 010 imm 100 4
     output        rf_wen,
@@ -11,10 +11,11 @@ module IDU (
     output        dram_en,
     output        dram_wen,
     output        csr_wen,
-    output [5:0]  csr_op,
+    output [5:0]  csr_op,       // {inst_csrrci, inst_csrrsi, inst_csrrwi, inst_csrrc, inst_csrrs, inst_csrrw}
     output [31:0] zimm,
     output        ecall_en,
-    output        mret_en
+    output        mret_en,
+    output        ebreak_en
 );
 
     wire [6:0] opcode;
@@ -141,12 +142,6 @@ module IDU (
 
     assign inst_ebreak = inst == 32'b00000000000100000000000001110011;
 
-    import "DPI-C" function void npc_trap();
-    always @(*) begin
-        if(inst_ebreak)
-            npc_trap();
-    end
-
     assign immI = {{20{inst[31]}}, inst[31:20]};
     assign immU = {inst[31:12], 12'b0};
     assign immS = {{20{inst[31]}}, inst[31:25], inst[11:7]};
@@ -205,5 +200,7 @@ module IDU (
     assign ecall_en = inst_ecall;
 
     assign mret_en = inst_mret;
-
+    
+    assign ebreak_en = inst_ebreak;
+    
 endmodule

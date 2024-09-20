@@ -35,21 +35,8 @@ void difftest_skip_ref() {
   // already write some memory, and the incoming instruction in NEMU
   // will load that memory, we will encounter false negative. But such
   // situation is infrequent.
-  skip_dut_nr_inst = 0;
-}
 
-// this is used to deal with instruction packing in QEMU.
-// Sometimes letting QEMU step once will execute multiple instructions.
-// We should skip checking until NEMU's pc catches up with QEMU's pc.
-// The semantic is
-//   Let REF run `nr_ref` instructions first.
-//   We expect that DUT will catch up with REF within `nr_dut` instructions.
-void difftest_skip_dut(int nr_ref, int nr_dut) {
-  skip_dut_nr_inst += nr_dut;
-
-  while (nr_ref -- > 0) {
-    ref_difftest_exec(1);
-  }
+  skip_dut_nr_inst = 2; // !!! this is buggy but i have not find a good way !!!
 }
 
 void init_difftest(char *ref_so_file, long img_size, int port) {
@@ -84,7 +71,7 @@ void init_difftest(char *ref_so_file, long img_size, int port) {
   ref_difftest_regcpy(&cpu, DIFFTEST_TO_REF);
 }
 
-static void checkregs(vaddr_t pc) {
+static void checkregs() {
   bool flag = true;
   
   if(ref.pc != cpu.pc) {
@@ -101,42 +88,28 @@ static void checkregs(vaddr_t pc) {
 
   if (!flag) {
     sim_state.state = SIM_ABORT;
-    sim_state.halt_pc = pc;
+    sim_state.halt_pc = cpu.pc;
     reg_display();
   }
 }
 
-void difftest_step(vaddr_t pc, vaddr_t npc) {
+void difftest_step() {
   if (skip_dut_nr_inst > 0) {
     ref_difftest_regcpy(&ref, DIFFTEST_TO_DUT);
-    if (ref.pc == npc) {
-      skip_dut_nr_inst = 0;
-      checkregs(npc);
-      return;
-    }
     skip_dut_nr_inst --;
-    if (skip_dut_nr_inst == 0)
-      panic("can not catch up with ref.pc = " FMT_WORD " at pc = " FMT_WORD, ref.pc, pc);
     return;
   }
 
   if (is_skip_ref) {
+    ref_difftest_regcpy(&cpu, DIFFTEST_TO_REF);
     is_skip_ref = false;
-    just_skip_ref = true;
     return;
   }
 
-  if(just_skip_ref) {
-    // to skip the checking of an instruction, just copy the reg state to reference design
-    ref_difftest_regcpy(&cpu, DIFFTEST_TO_REF);
-    just_skip_ref = false;
-  }
-
-  // changed for synchronous writes
-  ref_difftest_regcpy(&ref, DIFFTEST_TO_DUT);
-  checkregs(pc);
-
   ref_difftest_exec(1);
+  ref_difftest_regcpy(&ref, DIFFTEST_TO_DUT);
+
+  checkregs();
 }
 #else
 void init_difftest(char *ref_so_file, long img_size, int port) { }

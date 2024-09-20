@@ -9,6 +9,7 @@ void init_mem();
 void init_difftest(char *ref_so_file, long img_size, int port);
 void init_device();
 void init_sdb();
+void init_sim();
 extern "C" void init_disasm(const char *triple);
 long load_img(const char *img_file);
 void sdb_set_batch_mode();
@@ -90,6 +91,8 @@ void init_monitor(int argc, char *argv[]) {
 
   /* Load the image to memory. This will overwrite the built-in image. */
   long img_size = load_img(img_file);
+
+  init_sim();
 
   /* Initialize differential testing. */
   init_difftest(diff_so_file, img_size, difftest_port);
