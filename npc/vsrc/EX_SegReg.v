@@ -1,6 +1,6 @@
 module EX_SegReg (
-    input clk,
-    input rst,
+    input clock,
+    input reset,
 
     input flush,
 
@@ -60,8 +60,8 @@ module EX_SegReg (
     assign ex_ready = !valid || ready_go && mem_ready;
     assign ex_valid = valid && ready_go;
 
-    always @(posedge clk) begin
-        if (rst || flush) begin
+    always @(posedge clock) begin
+        if (reset || flush) begin
             valid <= 1'b0;
         end
         else if (ex_ready) begin
@@ -69,7 +69,7 @@ module EX_SegReg (
         end
     end
 
-    always @(posedge clk) begin
+    always @(posedge clock) begin
         if (ex_ready && id_valid) begin
             pc_ex           <= pc_id;
             inst_ex         <= inst_id;

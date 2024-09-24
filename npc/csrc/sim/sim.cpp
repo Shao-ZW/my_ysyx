@@ -14,23 +14,23 @@ void npc_eval() {
   cpu.pc = top->rootp->top__DOT__u_CPU__DOT__pc_wb;
   cpu.inst_val = top->rootp->top__DOT__u_CPU__DOT__inst_wb;
 
-  top->clk = 0;
+  top->clock = 0;
   top->eval();
   IFDEF(CONFIG_WAVE, fst->dump(cur_time));
   cur_time++;
 
-  top->clk = 1;
+  top->clock = 1;
   top->eval();
   IFDEF(CONFIG_WAVE, fst->dump(cur_time));
   cur_time++;
 
   while (!top->rootp->top__DOT__u_CPU__DOT__u_WB_SegReg__DOT__valid) {
-    top->clk = 0;
+    top->clock = 0;
     top->eval();
     IFDEF(CONFIG_WAVE, fst->dump(cur_time));
     cur_time++;
 
-    top->clk = 1;
+    top->clock = 1;
     top->eval();
     IFDEF(CONFIG_WAVE, fst->dump(cur_time));
     cur_time++;
@@ -52,26 +52,26 @@ void cpu_update() {
 
 static void restart() {
   /* Synchronous reset */
-  top->rst = 1;
+  top->reset = 1;
 
-  top->clk = 0;
+  top->clock = 0;
   top->eval();
   IFDEF(CONFIG_WAVE, fst->dump(cur_time));
   cur_time++;
 
-  top->clk = 1;
+  top->clock = 1;
   top->eval();
   IFDEF(CONFIG_WAVE, fst->dump(cur_time));
   cur_time++;
 
-  top->rst = 0;
+  top->reset = 0;
   while (!top->rootp->top__DOT__u_CPU__DOT__u_WB_SegReg__DOT__valid) {
-    top->clk = 0;
+    top->clock = 0;
     top->eval();
     IFDEF(CONFIG_WAVE, fst->dump(cur_time));
     cur_time++;
 
-    top->clk = 1;
+    top->clock = 1;
     top->eval();
     IFDEF(CONFIG_WAVE, fst->dump(cur_time));
     cur_time++;

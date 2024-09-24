@@ -1,6 +1,6 @@
 module WB_SegReg (
-    input clk,
-    input rst,
+    input clock,
+    input reset,
 
     input  mem_valid,
     output wb_ready,
@@ -37,8 +37,8 @@ module WB_SegReg (
     assign ready_go = 1'b1;  //  可以在一个周期完成，恒为1
     assign wb_ready = !valid || ready_go;
 
-    always @(posedge clk) begin
-        if (rst) begin
+    always @(posedge clock) begin
+        if (reset) begin
             valid <= 1'b0;
         end
         else if (wb_ready) begin
@@ -46,7 +46,7 @@ module WB_SegReg (
         end
     end
 
-    always @(posedge clk) begin
+    always @(posedge clock) begin
         if (wb_ready && mem_valid) begin
             pc_wb           <= pc_mem;
             inst_wb         <= inst_mem;
@@ -60,6 +60,13 @@ module WB_SegReg (
             csr_wen_wb      <= csr_wen_mem;
             csr_wdata_wb    <= csr_wdata_mem;
             ebreak_wb       <= ebreak_mem;
+        end
+        else if (wb_ready && !mem_valid) begin
+            rf_wen_wb       <= 1'b0;
+            csr_wen_wb      <= 1'b0;
+            ecall_en_wb     <= 1'b0;
+            mret_en_wb      <= 1'b0;
+            ebreak_wb       <= 1'b0;
         end
     end
 endmodule

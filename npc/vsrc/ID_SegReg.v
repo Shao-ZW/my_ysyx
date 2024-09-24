@@ -1,6 +1,6 @@
 module ID_SegReg (
-    input clk,
-    input rst,
+    input clock,
+    input reset,
     input stall,
     input flush,
 
@@ -22,8 +22,8 @@ module ID_SegReg (
     assign id_ready = !valid || ready_go && ex_ready;
     assign id_valid = valid && ready_go;
 
-    always @(posedge clk) begin
-        if (rst || flush) begin
+    always @(posedge clock) begin
+        if (reset || flush) begin
             valid <= 1'b0;
         end
         else if (id_ready) begin
@@ -31,7 +31,7 @@ module ID_SegReg (
         end
     end
 
-    always @(posedge clk) begin
+    always @(posedge clock) begin
         if (id_ready && if_valid) begin
             pc_id   <= pc_if;
             inst_id <= inst_if;

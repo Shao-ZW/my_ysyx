@@ -1,6 +1,6 @@
 module CSR(
-    input         clk,
-    input         rst,
+    input         clock,
+    input         reset,
     input         wen,
     input  [11:0] raddr,
     input  [11:0] waddr,
@@ -13,8 +13,8 @@ module CSR(
     output reg [31:0] rdata
 );
     reg [31:0] mstatus;
-    always @(posedge clk) begin
-        if(rst) begin
+    always @(posedge clock) begin
+        if(reset) begin
             mstatus <= 32'h1800;
         end
         else if(waddr == 12'h300 && wen) begin
@@ -23,8 +23,8 @@ module CSR(
     end
 
     reg [31:0] mtvec;
-    always @(posedge clk) begin
-        if(rst) begin
+    always @(posedge clock) begin
+        if(reset) begin
             mtvec <= 32'h0;
         end
         else if(waddr == 12'h305 && wen) begin
@@ -33,8 +33,8 @@ module CSR(
     end
 
     reg [31:0] mepc;
-    always @(posedge clk) begin
-        if(rst) begin
+    always @(posedge clock) begin
+        if(reset) begin
             mepc <= 32'h0;
         end
         else if(exception_en) begin
@@ -46,8 +46,8 @@ module CSR(
     end
 
     reg [31:0] mcause;
-    always @(posedge clk) begin
-        if(rst) begin
+    always @(posedge clock) begin
+        if(reset) begin
             mcause <= 32'h0;
         end
         else if(exception_en) begin

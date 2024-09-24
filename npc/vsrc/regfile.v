@@ -1,5 +1,5 @@
 module regfile (
-    input         clk,
+    input         clock,
     input         wen,
     input  [4:0]  raddr1,
     input  [4:0]  raddr2, 
@@ -10,7 +10,7 @@ module regfile (
 );
     reg [31:0] reg_array[31:0];
     
-    always @(posedge clk) begin
+    always @(posedge clock) begin
         if(wen && waddr != 5'b0) begin
             reg_array[waddr] <= wdata;
         end

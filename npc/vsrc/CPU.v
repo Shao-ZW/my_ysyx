@@ -1,36 +1,42 @@
 module CPU(
-    input         clk,
-    input         rst,
+    input         clock,
+    input         reset,
 
-    // output [31:0] i_araddr,
-    // output        i_arvalid,
-    // input         i_arready,
+    // AR
+    output [31:0] araddr,
+    output        arvalid,
+    input         arready,
 
-    // input  [31:0] i_rdata,
-    // input  [1:0]  i_rresp,
-    // input         i_rvalid,
-    // output        i_rready,
+    // R
+    input [31:0] rdata,
+    input [1:0]  rresp,
+    input        rvalid,
+    output       rready,
 
-    output        iram_en,
-    output [31:0] iram_addr,
-    input  [31:0] iram_rdata,
+    // AW
+    output [31:0] awaddr,
+    output        awvalid,
+    input         awready,
 
-    output        dram_en,
-    output        dram_wen,
-    output [31:0] dram_addr,
-    output [31:0] dram_wdata,
-    output [3:0]  dram_wmask,
-    input  [31:0] dram_rdata
+    // W
+    output [31:0] wdata,
+    output [3:0]  wstrb,
+    output        wvalid,
+    input         wready,
+
+    // B
+    input [1:0] bresp,
+    input       bvalid,
+    output      bready
 );
 
     wire [31:0] mtvec_rdata_global;
     wire [31:0] mepc_rdata_global;
 
     // IF
-    wire if_stall;
     wire if_flush;
     wire if_valid;
-    
+
     // ID
     wire id_flush;
     wire id_stall;
@@ -65,7 +71,7 @@ module CPU(
     // EX
     wire ex_ready;
     wire ex_valid;
-    
+
     wire ex_flush;
 
     wire [31:0] pc_ex;
@@ -137,9 +143,71 @@ module CPU(
     wire [31:0] csr_wdata_wb;
     wire        ebreak_wb;
 
+
+    wire        i_rvalid;
+    wire        i_rready;
+    wire [31:0] i_raddr;
+    wire [31:0] i_rdata;
+
+    wire        d_rvalid;
+    wire        d_rready;
+    wire [31:0] d_raddr;
+    wire [31:0] d_rdata;
+
+    wire        d_wvalid;
+    wire        d_wready;
+    wire [31:0] d_waddr;
+    wire [31:0] d_wdata;
+    wire [3:0]  d_wstrb;
+
+
+    AXI_arbiter u_AXI_arbiter(
+        .clock(clock),
+        .reset(reset),
+        
+        .i_rvalid(i_rvalid),
+        .i_rready(i_rready),
+        .i_raddr(i_raddr),
+        .i_rdata(i_rdata),
+
+        .d_rvalid(d_rvalid),
+        .d_rready(d_rready),
+        .d_raddr(d_raddr),
+        .d_rdata(d_rdata),
+
+        .d_wvalid(d_wvalid),
+        .d_wready(d_wready),
+        .d_waddr(d_waddr),
+        .d_wdata(d_wdata),
+        .d_wstrb(d_wstrb),
+
+        .araddr(araddr),
+        .arvalid(arvalid),
+        .arready(arready),
+
+        .rdata(rdata),
+        .rresp(rresp),
+        .rvalid(rvalid),
+        .rready(rready),
+
+        .awaddr(awaddr),
+        .awvalid(awvalid),
+        .awready(awready),
+
+        .wdata(wdata),
+        .wstrb(wstrb),
+        .wvalid(wvalid),
+        .wready(wready),
+
+        .bresp(bresp),
+        .bvalid(bvalid),
+        .bready(bready)
+    );
+
     // IF
     wire [31:0] pc;
     wire [31:0] next_pc;
+    wire pc_wen;
 
     NPC u_NPC(
         .pc(pc),
@@ -153,31 +221,53 @@ module CPU(
     );
 
     PC u_PC(
-        .clk(clk),
-        .rst(rst),
-        .wen(id_ready),
+        .clock(clock),
+        .reset(reset),
+        .wen(pc_wen),
         .next_pc(next_pc),
         .pc(pc)
     );
 
-    assign iram_addr = pc;
-    assign iram_en = !rst;
+    reg [2:0] if_crt, if_nxt;
 
-    reg if_valid;
-
-    always @(posedge clk) begin
-        if (rst || if_flush) begin
-            if_valid <= 1'b0;
-        end
-        else begin
-            if_valid <= 1'b1;
+    always @(posedge clock) begin
+        if(reset) begin
+            if_crt <= 3'b000;
+        end else begin
+            if_crt <= if_nxt;
         end
     end
 
+    always @(*) begin
+        case (if_crt)
+        3'b000: begin   // RST
+            if_nxt = 3'b001;
+        end 
+        3'b001: begin   // IDLE
+            if_nxt = if_flush ? 3'b001 : 3'b010;
+        end
+        3'b010: begin   // FETCHING
+            if_nxt = (i_rvalid & i_rready) ? 3'b001 : if_flush ? 3'b100 : 3'b010;
+        end
+        3'b100: begin   // FLUSHING
+            if_nxt = i_rready ? 3'b001 : 3'b100;
+        end
+        default: begin
+            if_nxt = 3'b000;
+        end
+        endcase
+    end
+
+    assign if_valid = (if_crt == 3'b010) & i_rvalid & i_rready & !if_flush;
+    assign pc_wen = ((if_crt == 3'b010) & i_rvalid & i_rready & id_ready) | (ecall_en_ex & ex_valid) | (mret_en_ex & ex_valid) | (jump_taken_ex & ex_valid);
+
+    assign i_rvalid = (if_crt == 3'b010);
+    assign i_raddr = pc;
+
     // ID
     ID_SegReg u_ID_SegReg(
-        .clk(clk),
-        .rst(rst),
+        .clock(clock),
+        .reset(reset),
         
         .stall(id_stall),
         .flush(id_flush),
@@ -187,8 +277,8 @@ module CPU(
         .ex_ready(ex_ready),
         .id_valid(id_valid),
 
-        .pc_if(pc),
-        .inst_if(iram_rdata),
+        .pc_if(i_raddr),
+        .inst_if(i_rdata),
         .pc_id(pc_id),
         .inst_id(inst_id)
     );
@@ -214,7 +304,7 @@ module CPU(
     );
 
     regfile u_regfile(
-        .clk(clk),
+        .clock(clock),
         .wen(rf_wen_wb),
         .raddr1(inst_id[19:15]),
         .raddr2(inst_id[24:20]),
@@ -225,8 +315,8 @@ module CPU(
     );
 
     CSR u_CSR(
-        .clk(clk),
-        .rst(rst),
+        .clock(clock),
+        .reset(reset),
         .wen(csr_wen_wb),
         .raddr(inst_id[31:20]),
         .waddr(inst_wb[31:20]),
@@ -239,15 +329,14 @@ module CPU(
         .mtvec_rdata(mtvec_rdata_global)
     );
 
-    assign id_flush = id_valid & (|jump_type_id || mret_en_id || ecall_en_id); 
-    assign if_flush = id_valid & (|jump_type_id || mret_en_id || ecall_en_id); 
-
-    // Scoreboard only handle data hazard right now
+    // Scoreboard only handle data hazard right now  has porblem now!
     Scoreboard u_Scoreboard(
-        .clk(clk),
-        .rst(rst),
+        .clock(clock),
+        .reset(reset),
         .id_valid(id_valid),
         .ex_ready(ex_ready),
+        .wb_rd(inst_wb[11:7]),
+        .wb_rf_wen(rf_wen_wb),
         .rs1(inst_id[19:15]),
         .rs2(inst_id[24:20]),
         .rd(inst_id[11:7]),
@@ -256,10 +345,13 @@ module CPU(
         .ex_flush(ex_flush)
     );
 
+    assign id_flush = id_valid & ex_ready & (|jump_type_id || mret_en_id || ecall_en_id);
+    assign if_flush = id_valid & ex_ready & (|jump_type_id || mret_en_id || ecall_en_id);
+
     // EX
     EX_SegReg u_EX_SegReg(
-        .clk(clk),
-        .rst(rst),
+        .clock(clock),
+        .reset(reset),
         .flush(ex_flush),
 
         .mem_ready(mem_ready),
@@ -366,13 +458,16 @@ module CPU(
 
     // MEM
     MEM_SegReg u_MEM_SegReg(
-        .clk(clk),
-        .rst(rst),
+        .clock(clock),
+        .reset(reset),
 
         .wb_ready(wb_ready),
         .mem_ready(mem_ready),
         .ex_valid(ex_valid),
         .mem_valid(mem_valid),
+
+        .d_rready(d_rready),
+        .d_wready(d_wready),
 
         .pc_ex(pc_ex),
         .inst_ex(inst_ex),
@@ -409,14 +504,16 @@ module CPU(
         .ebreak_mem(ebreak_mem)
     );
 
-    assign dram_addr  = alu_res_mem;
-    assign dram_en    = dram_en_mem & mem_valid;
-    assign dram_wen   = dram_wen_mem & mem_valid;
-    assign dram_wmask = dram_wmask_mem;
-    assign dram_wdata = dram_wdata_mem;
+    assign d_rvalid = dram_en_mem & !dram_wen_mem & !d_rready;
+    assign d_raddr = alu_res_mem;
+
+    assign d_wvalid = dram_wen_mem & !d_wready;
+    assign d_waddr = alu_res_mem;
+    assign d_wdata = dram_wdata_mem;
+    assign d_wstrb = dram_wmask_mem;
 
     DRAM_read_ctrl u_DRAM_read_ctrl(
-        .dram_rdata(dram_rdata),
+        .dram_rdata(d_rdata),
         .dram_raddr(alu_res_mem),
         .load_type(mem_type_mem[7:3]),
         .load_data(load_data_mem)
@@ -425,8 +522,8 @@ module CPU(
     
     // WB
     WB_SegReg u_WB_SegReg(
-        .clk(clk),
-        .rst(rst),
+        .clock(clock),
+        .reset(reset),
 
         .mem_valid(mem_valid),
         .wb_ready(wb_ready),

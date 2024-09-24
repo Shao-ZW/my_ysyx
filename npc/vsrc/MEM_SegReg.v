@@ -1,11 +1,14 @@
 module MEM_SegReg (
-    input clk,
-    input rst,
+    input clock,
+    input reset,
 
     input  wb_ready,
     output mem_ready,
     input  ex_valid,
     output mem_valid,
+
+    input d_rready,
+    input d_wready,
 
     input [31:0] pc_ex,
     input [31:0] inst_ex,
@@ -44,12 +47,12 @@ module MEM_SegReg (
     reg valid;
     wire ready_go;
     
-    assign ready_go = 1'b1;  //  可以在一个周期完成，恒为1
+    assign ready_go = (!dram_en_mem & !dram_wen_mem) || d_rready || d_wready;
     assign mem_ready = !valid || ready_go && wb_ready;
     assign mem_valid = valid && ready_go;
 
-    always @(posedge clk) begin
-        if (rst) begin
+    always @(posedge clock) begin
+        if (reset) begin
             valid <= 1'b0;
         end
         else if (mem_ready) begin
@@ -57,7 +60,7 @@ module MEM_SegReg (
         end
     end
 
-    always @(posedge clk) begin
+    always @(posedge clock) begin
         if (mem_ready && ex_valid) begin
             pc_mem           <= pc_ex;
             inst_mem         <= inst_ex;
@@ -75,6 +78,10 @@ module MEM_SegReg (
             dram_wmask_mem   <= dram_wmask_ex;
             dram_wdata_mem   <= dram_wdata_ex;
             ebreak_mem       <= ebreak_ex;
+        end
+        else if (mem_ready && !ex_valid) begin
+            dram_en_mem  <= 1'b0;
+            dram_wen_mem <= 1'b0;
         end
     end
 endmodule
